@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blind Box Challenge: Unbox Your Next Writing Level!</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: radial-gradient(circle at top, #1e1b4b 0%, #0f172a 60%, #020617 100%);
+      color: #f8fafc;
+    }
+    h1, h2, h3, .font-display {
+      font-family: 'Fredoka', sans-serif;
+    }
+
+    /* Floating Idle Animation for Unopened Boxes */
+    @keyframes floatSlow {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-6px); }
+    }
+    .animate-float {
+      animation: floatSlow 3.2s ease-in-out infinite;
+    }
+
+    /* Intense Box Shake Animation */
+    @keyframes boxShake {
+      0% { transform: translate(0, 0) rotate(0deg) scale(1); }
+      15% { transform: translate(-10px, -6px) rotate(-8deg) scale(1.05); }
+      30% { transform: translate(10px, 4px) rotate(8deg) scale(1.07); }
+      45% { transform: translate(-12px, -4px) rotate(-10deg) scale(1.09); }
+      60% { transform: translate(12px, 6px) rotate(10deg) scale(1.11); }
+      75% { transform: translate(-8px, -8px) rotate(-6deg) scale(1.13); }
+      90% { transform: translate(8px, 4px) rotate(6deg) scale(1.15); }
+      100% { transform: translate(0, 0) rotate(0deg) scale(1.2); }
+    }
+    .shaking {
+      animation: boxShake 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards !important;
+    }
+
+    /* Card Glow Styles */
+    .rare-glow {
+      box-shadow: 0 0 40px rgba(99, 102, 241, 0.45), inset 0 0 20px rgba(139, 92, 246, 0.2);
+      border: 2px solid rgba(129, 140, 248, 0.75);
+    }
+    .ssr-glow {
+      box-shadow: 0 0 60px rgba(245, 158, 11, 0.75), 0 0 90px rgba(225, 29, 72, 0.5), inset 0 0 25px rgba(251, 191, 36, 0.35);
+      border: 3px solid #fbbf24;
+    }
+
+    /* Screen Flash for SSR Boss */
+    @keyframes flashScreen {
+      0% { opacity: 0.95; }
+      100% { opacity: 0; }
+    }
+    .flash-active {
+      animation: flashScreen 0.85s ease-out forwards;
+    }
+
+    /* Answer Reveal Pop */
+    @keyframes popIn {
+      0% { opacity: 0; transform: scale(0.96); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    .animate-pop {
+      animation: popIn 0.25s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col justify-between px-6 py-4 select-none">
+
+  <!-- Dramatic White/Gold Flash Overlay for Secret Reveal -->
+  <div id="screenFlash" class="fixed inset-0 bg-amber-200 pointer-events-none opacity-0 z-50"></div>
+
+  <!-- Confetti Canvas -->
+  <canvas id="confettiCanvas" class="fixed inset-0 pointer-events-none z-50"></canvas>
+
+  <!-- TOP NAVIGATION BAR (Compact Fixed Height) -->
+  <header class="w-full max-w-[1600px] mx-auto flex items-center justify-between gap-4 pb-3 border-b border-slate-800/80 shrink-0">
+    <div class="flex items-center gap-3">
+      <span class="text-4xl">🎁</span>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-[11px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+            Classroom Warm-Up Game • B2 First (FCE) to IELTS Bridge
+          </span>
+        </div>
+        <h1 class="text-2xl lg:text-3xl font-bold text-white tracking-wide mt-0.5">
+          Blind Box Challenge: <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-pink-400 to-indigo-400">Unbox Your Next Writing Level!</span>
+        </h1>
+      </div>
+    </div>
+
+    <!-- Top Right Controls: Blueprint Button (when unlocked), Progress, Sound, Reset -->
+    <div class="flex items-center gap-3">
+      <button id="blueprintHeaderBtn" onclick="openBlueprintModal()" class="hidden bg-gradient-to-r from-amber-500 via-orange-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 text-slate-950 font-extrabold text-sm lg:text-base px-5 py-2 rounded-xl shadow-[0_0_25px_rgba(245,158,11,0.6)] border-2 border-amber-200 flex items-center gap-2 transition transform hover:scale-105 animate-pulse">
+        <span>📊</span> FCE vs. IELTS Blueprint
+      </button>
+
+      <div class="bg-slate-900/90 border border-slate-700 px-3.5 py-1.5 rounded-xl flex items-center gap-2 shadow">
+        <span class="text-xs text-slate-400 font-semibold">Unboxed:</span>
+        <span id="progressText" class="text-lg font-extrabold text-amber-400 font-display">0 / 5</span>
+      </div>
+
+      <button id="muteBtn" onclick="toggleMute()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 text-sm transition active:scale-95">
+        <span id="muteIcon">🔊</span>
+        <span id="muteLabel">Sound ON</span>
+      </button>
+
+      <button onclick="resetGame()" class="bg-rose-950/70 hover:bg-rose-900 text-rose-200 border border-rose-700/60 px-3.5 py-2 rounded-xl font-bold text-sm flex items-center gap-1.5 transition active:scale-95">
+        <span>🔄</span> Reset
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT AREA (Flex-1, Centered, No Overflow) -->
+  <main class="w-full max-w-[1600px] mx-auto flex-1 flex flex-col justify-evenly items-center py-2 overflow-hidden">
+    
+    <!-- Compact Instruction Bar -->
+    <div class="bg-slate-900/80 border border-indigo-500/30 rounded-xl px-6 py-2.5 w-full max-w-5xl text-center shadow-lg shrink-0">
+      <p class="text-sm lg:text-base text-slate-200">
+        <strong class="text-amber-300">How to Play:</strong> Pick any Mystery Blind Box below! Clear the <span class="text-indigo-300 font-bold">4 FCE Review Challenges</span> with your team to unlock the <span class="text-amber-400 font-bold underline decoration-amber-400/50">1% Drop Rate SSR Secret Boss</span> in the final box!
+      </p>
+    </div>
+
+    <!-- 5 MYSTERY BLIND BOXES GRID (Horizontally aligned in 5 columns) -->
+    <div id="boxesGrid" class="grid grid-cols-5 gap-5 w-full max-w-6xl items-stretch my-1">
+      <!-- Dynamically populated by JavaScript -->
+    </div>
+
+    <!-- FCE 5-Paragraph Architecture Quick Reference Bar -->
+    <div class="w-full max-w-6xl bg-slate-900/65 border border-slate-800 rounded-xl px-5 py-3 shrink-0">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-400">
+          📌 Standard B2 First (FCE) 5-Paragraph Essay Architecture (140–190 Words)
+        </span>
+        <span id="statusHint" class="text-xs font-semibold text-amber-400">
+          ✨ Click any box above to unbox a question!
+        </span>
+      </div>
+      <div class="grid grid-cols-5 gap-3 text-center text-xs lg:text-sm">
+        <div class="bg-slate-800/80 border border-slate-700/80 rounded-lg py-2 px-3 flex items-center justify-center gap-2">
+          <span class="text-indigo-400 font-extrabold">PARA 1:</span>
+          <span class="text-slate-200 font-semibold">Introduction</span>
+        </div>
+        <div class="bg-slate-800/80 border border-slate-700/80 rounded-lg py-2 px-3 flex items-center justify-center gap-2">
+          <span class="text-indigo-400 font-extrabold">PARA 2:</span>
+          <span class="text-slate-200 font-semibold">Body 1 (Note 1)</span>
+        </div>
+        <div class="bg-slate-800/80 border border-slate-700/80 rounded-lg py-2 px-3 flex items-center justify-center gap-2">
+          <span class="text-indigo-400 font-extrabold">PARA 3:</span>
+          <span class="text-slate-200 font-semibold">Body 2 (Note 2)</span>
+        </div>
+        <div class="bg-slate-800/80 border border-slate-700/80 rounded-lg py-2 px-3 flex items-center justify-center gap-2">
+          <span class="text-indigo-400 font-extrabold">PARA 4:</span>
+          <span class="text-slate-200 font-semibold">Body 3 (Own Idea)</span>
+        </div>
+        <div class="bg-slate-800/80 border border-slate-700/80 rounded-lg py-2 px-3 flex items-center justify-center gap-2">
+          <span class="text-indigo-400 font-extrabold">PARA 5:</span>
+          <span class="text-slate-200 font-semibold">Conclusion</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- FOOTER (Compact Fixed Height) -->
+  <footer class="w-full max-w-[1600px] mx-auto pt-2 border-t border-slate-800/60 flex justify-between items-center text-xs text-slate-500 shrink-0">
+    <span>Blind Box Classroom Edition • FCE (5 Paragraphs) ➔ IELTS Writing Task 2 (4 Paragraphs)</span>
+    <span>100% Widescreen Desktop Fit • Zero-Scroll Interface</span>
+  </footer>
+
+  <!-- =========================================================
+       SPLIT-VIEW CARD MODAL (WIDESCREEN NO-SCROLL LAYOUT)
+       ========================================================= -->
+  <div id="cardModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-40 hidden flex items-center justify-center p-6">
+    <div id="cardModalContent" class="relative w-full max-w-[1480px] h-[86vh] rounded-3xl bg-slate-900 px-8 py-6 flex flex-col justify-between overflow-hidden transition-all duration-300">
+      
+      <!-- Modal Top Header -->
+      <div class="flex items-center justify-between gap-4 pb-3 border-b border-slate-700/80 shrink-0">
+        <div class="flex items-center gap-3">
+          <span id="modalRarityBadge" class="px-3.5 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider">
+            ★ Epic Card
+          </span>
+          <span id="modalCardBadge" class="text-slate-300 font-bold text-base">
+            Badge Name
+          </span>
+          <span class="text-slate-600">|</span>
+          <h2 id="modalTitle" class="text-2xl lg:text-3xl font-bold tracking-wide">
+            CARD TITLE
+          </h2>
+        </div>
+
+        <button onclick="closeCardModal()" class="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-extrabold text-sm lg:text-base px-6 py-2 rounded-xl shadow-lg transition transform active:scale-95 flex items-center gap-2">
+          <span>✔</span> Back to Boxes
+        </button>
+      </div>
+
+      <!-- Modal Main 2-Column Split Body (Left: Question + Timer | Right: Teacher's Key Vault) -->
+      <div class="grid grid-cols-12 gap-6 flex-1 my-4 overflow-hidden">
+        
+        <!-- LEFT COLUMN (7 Cols): Question + Countdown Timer -->
+        <div class="col-span-7 flex flex-col justify-between bg-slate-950/75 border border-slate-800 rounded-2xl p-6 overflow-hidden">
+          
+          <!-- Question Area -->
+          <div id="modalQuestion" class="text-base lg:text-lg text-slate-100 space-y-3 leading-relaxed my-auto">
+            <!-- Dynamically populated -->
+          </div>
+
+          <!-- Interactive Countdown Timer Bar (Docked at bottom of Left Column) -->
+          <div id="timerSection" class="mt-4 pt-4 border-t border-slate-800/90 flex items-center justify-between gap-4 shrink-0">
+            <div class="flex items-center gap-2.5">
+              <span class="text-2xl">⏱️</span>
+              <div>
+                <div class="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Challenge Timer</div>
+                <div id="timerDisplay" class="text-2xl font-extrabold font-display text-amber-400 leading-none">00:15</div>
+              </div>
+            </div>
+
+            <!-- Visual Progress Bar -->
+            <div class="flex-1 bg-slate-900 h-3.5 rounded-full overflow-hidden border border-slate-700">
+              <div id="timerProgress" class="bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500 h-full w-full transition-all duration-300"></div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button id="startTimerBtn" onclick="toggleTimer()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-4 py-2 rounded-xl text-sm transition active:scale-95">
+                ▶ Start Timer
+              </button>
+              <button onclick="resetCardTimer()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold px-3 py-2 rounded-xl text-xs transition">
+                ↺ Reset
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN (5 Cols): Teacher's Answer Key Vault (No Scroll, Instant Swap) -->
+        <div class="col-span-5 flex flex-col bg-slate-950/50 border-2 border-dashed border-slate-700/80 rounded-2xl p-6 relative overflow-hidden" id="rightVaultBox">
+          
+          <!-- Locked State (Shown before teacher clicks Reveal) -->
+          <div id="answerLockedView" class="flex-1 flex flex-col items-center justify-center text-center p-4">
+            <div class="w-16 h-16 rounded-2xl bg-indigo-500/15 border border-indigo-400/40 flex items-center justify-center text-4xl mb-4 shadow-inner">
+              🔒
+            </div>
+            <h3 class="text-xl font-bold text-slate-200">Teacher's Answer Key</h3>
+            <p class="text-sm text-slate-400 mt-1 max-w-xs">
+              Let teams discuss and answer first! Click below when you are ready to reveal the official solution.
+            </p>
+            <button onclick="toggleAnswerKey(true)" class="mt-6 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-base px-6 py-3.5 rounded-xl shadow-[0_0_25px_rgba(79,70,229,0.5)] border border-indigo-300/50 flex items-center gap-2 transition transform hover:scale-105 active:scale-95">
+              <span>🔑</span> Reveal Answer Key
+            </button>
+          </div>
+
+          <!-- Unlocked State (Shown immediately inside the right column without scrolling) -->
+          <div id="answerUnlockedView" class="hidden flex-1 flex flex-col justify-between animate-pop">
+            <div class="flex items-center justify-between pb-3 border-b border-emerald-500/30">
+              <span class="text-xs font-extrabold uppercase tracking-widest px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">
+                🔓 Official Teacher's Key
+              </span>
+              <button onclick="toggleAnswerKey(false)" class="text-xs text-slate-400 hover:text-slate-200 underline">
+                Hide Key
+              </button>
+            </div>
+
+            <div id="answerKeyContent" class="my-auto text-sm lg:text-base text-emerald-100 space-y-2.5 leading-relaxed">
+              <!-- Dynamically populated -->
+            </div>
+
+            <div id="secretBlueprintShortcut" class="hidden pt-3 border-t border-emerald-500/30">
+              <button onclick="closeCardModal(); openBlueprintModal();" class="w-full bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-extrabold py-2.5 px-4 rounded-xl text-sm shadow-lg flex items-center justify-center gap-2 transition">
+                <span>📊</span> Open FCE vs. IELTS Upgrade Blueprint <span>🚀</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- =========================================================
+       FINAL SUMMARY MODAL: FCE VS IELTS BLUEPRINT (NO SCROLL)
+       ========================================================= -->
+  <div id="blueprintModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-6">
+    <div class="relative w-full max-w-[1440px] h-[84vh] rounded-3xl bg-slate-900 border-2 border-amber-400/80 shadow-[0_0_60px_rgba(245,158,11,0.4)] px-8 py-6 flex flex-col justify-between overflow-hidden">
+      
+      <div class="flex items-center justify-between pb-3 border-b border-slate-700 shrink-0">
+        <div class="flex items-center gap-3">
+          <span class="text-xs font-extrabold uppercase tracking-widest px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/40">
+            Level-Up Summary
+          </span>
+          <h2 class="text-2xl lg:text-3xl font-bold text-white">
+            📊 FCE Essay (5 Paragraphs) vs. IELTS Writing Task 2 (4 Paragraphs)
+          </h2>
+        </div>
+        <button onclick="closeBlueprintModal()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-6 py-2 rounded-xl text-sm lg:text-base transition">
+          Got It! Let's Start Writing 🚀
+        </button>
+      </div>
+
+      <!-- Comparison Table (Sized to fit viewport cleanly) -->
+      <div class="my-auto overflow-hidden rounded-2xl border border-slate-700">
+        <table class="w-full text-left border-collapse text-sm lg:text-base">
+          <thead>
+            <tr class="bg-slate-800 text-slate-200 border-b border-slate-700">
+              <th class="py-3.5 px-5 font-extrabold w-1/5">Feature</th>
+              <th class="py-3.5 px-5 font-extrabold text-indigo-300 w-2/5 border-l border-slate-700">B2 First (FCE) Opinion Essay</th>
+              <th class="py-3.5 px-5 font-extrabold text-amber-400 w-2/5 border-l border-slate-700 bg-amber-950/20">🌟 IELTS Writing Task 2 (Secret Boss)</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800">
+            <tr class="bg-slate-900/70">
+              <td class="py-3.5 px-5 font-bold text-slate-300">1. Word Count</td>
+              <td class="py-3.5 px-5 border-l border-slate-800 text-slate-200">
+                <span class="font-extrabold text-indigo-300 text-lg">140 – 190 words</span> <span class="text-xs text-slate-400 ml-1">(Concise & compact)</span>
+              </td>
+              <td class="py-3.5 px-5 border-l border-slate-800 bg-amber-950/10 text-slate-100">
+                <span class="font-extrabold text-amber-300 text-lg">At least 250 words</span> <span class="text-xs text-amber-200/80 ml-1">(In-depth & fully developed)</span>
+              </td>
+            </tr>
+            <tr class="bg-slate-900/70">
+              <td class="py-3.5 px-5 font-bold text-slate-300">2. Prompts & Ideas</td>
+              <td class="py-3.5 px-5 border-l border-slate-800 text-slate-200">
+                <strong class="text-indigo-300">Guided Safety Net:</strong> 2 given notes + 1 <em>"your own idea"</em>
+              </td>
+              <td class="py-3.5 px-5 border-l border-slate-800 bg-amber-950/10 text-slate-100">
+                <strong class="text-amber-300">100% Independent:</strong> 0 notes given — you brainstorm all main ideas!
+              </td>
+            </tr>
+            <tr class="bg-slate-900/70">
+              <td class="py-3.5 px-5 font-bold text-slate-300">3. Essay Structure</td>
+              <td class="py-3.5 px-5 border-l border-slate-800 text-slate-200">
+                <div class="font-extrabold text-indigo-300 mb-1">5 Paragraphs:</div>
+                <div class="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs lg:text-sm text-slate-300">
+                  <span>• <strong>Para 1:</strong> Introduction</span>
+                  <span>• <strong>Para 4:</strong> Short Body 3 (Note 3)</span>
+                  <span>• <strong>Para 2:</strong> Short Body 1 (Note 1)</span>
+                  <span>• <strong>Para 5:</strong> Conclusion</span>
+                  <span>• <strong>Para 3:</strong> Short Body 2 (Note 2)</span>
+                </div>
+              </td>
+              <td class="py-3.5 px-5 border-l border-slate-800 bg-amber-950/10 text-slate-100">
+                <div class="font-extrabold text-amber-300 mb-1">4 Paragraphs:</div>
+                <div class="grid grid-cols-1 gap-y-0.5 text-xs lg:text-sm text-amber-100">
+                  <span>• <strong>Para 1:</strong> Introduction</span>
+                  <span>• <strong>Para 2:</strong> Deeply Developed Body 1 (View A + Explanation + Example)</span>
+                  <span>• <strong>Para 3:</strong> Deeply Developed Body 2 (View B + Explanation + Example)</span>
+                  <span>• <strong>Para 4:</strong> Conclusion</span>
+                </div>
+              </td>
+            </tr>
+            <tr class="bg-slate-900/70">
+              <td class="py-3.5 px-5 font-bold text-slate-300">4. Paragraph Depth</td>
+              <td class="py-3.5 px-5 border-l border-slate-800 text-slate-200">
+                <strong class="text-indigo-300">~35 – 45 words</strong> per body paragraph <span class="text-xs text-slate-400">(Main point + brief reason)</span>
+              </td>
+              <td class="py-3.5 px-5 border-l border-slate-800 bg-amber-950/10 text-slate-100">
+                <strong class="text-amber-300">~90 – 100+ words</strong> per body paragraph <span class="text-xs text-amber-200/90">(Topic Sentence ➔ Explanation ➔ Example ➔ Result)</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Takeaway Callout -->
+      <div class="bg-indigo-950/60 border border-indigo-500/40 rounded-xl py-3 px-5 text-center text-sm lg:text-base text-indigo-200 shrink-0">
+        💡 <strong>Key Takeaway:</strong> You keep 100% of your linking words from FCE! To level up to IELTS Task 2, we trade <strong>3 short body paragraphs</strong> for <strong>2 deeply explained body paragraphs</strong> backed by real-world examples.
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==========================================
+       JAVASCRIPT LOGIC & WEB AUDIO SYNTHESIZER
+       ========================================== -->
+  <script>
+    // 1. PEDAGOGICAL CARD SEQUENCE DATA (Strictly ordered 1 -> 5 regardless of which box is clicked)
+    const pedagogicalSequence = [
+      {
+        seqId: 1,
+        isSecret: false,
+        rarity: "★ COMMON CARD • FCE REVIEW",
+        badge: "The Familiar Numbers",
+        icon: "🔢",
+        title: "CARD #1: THE FAMILIAR NUMBERS",
+        timerSeconds: 15,
+        questionHTML: `
+          <p class="font-bold text-indigo-300 text-xl">Think back to the B2 First (FCE) Opinion Essay you have mastered:</p>
+          <ol class="list-decimal list-inside space-y-3 mt-4 text-lg font-medium">
+            <li>What is the standard <strong class="text-amber-300">word count range</strong>?</li>
+            <li>How many <strong class="text-amber-300">paragraphs</strong> do we divide the essay into, and what is the exact role of each paragraph?</li>
+          </ol>
+        `,
+        answerHTML: `
+          <p>✅ <strong>Word Count Range:</strong> <span class="text-amber-300 font-extrabold">140 – 190 words</span>.</p>
+          <p>✅ <strong>Standard Structure (5 Paragraphs):</strong></p>
+          <ul class="list-disc list-inside ml-3 space-y-1 text-emerald-200 text-sm lg:text-base">
+            <li><strong>Para 1:</strong> Introduction</li>
+            <li><strong>Para 2:</strong> Body 1 (Covers Note 1)</li>
+            <li><strong>Para 3:</strong> Body 2 (Covers Note 2)</li>
+            <li><strong>Para 4:</strong> Body 3 (Covers Note 3 – <em>Your own idea</em>)</li>
+            <li><strong>Para 5:</strong> Conclusion</li>
+          </ul>
+          <p class="pt-2 border-t border-emerald-700/60 text-amber-300 italic text-sm">
+            💡 <strong>Teacher's Note:</strong> Keep these numbers in mind—they are about to evolve!
+          </p>
+        `
+      },
+      {
+        seqId: 2,
+        isSecret: false,
+        rarity: "★ COMMON CARD • FCE REVIEW",
+        badge: "The Safety Net",
+        icon: "🛟",
+        title: "CARD #2: THE \"NOTES\" SAFETY NET",
+        timerSeconds: 20,
+        questionHTML: `
+          <p class="text-lg">In every FCE essay prompt, you are given a box called <strong class="text-amber-300">"Notes"</strong> with 3 bullet points (2 given ideas + 1 <em>"your own idea"</em>).</p>
+          <ul class="list-disc list-inside space-y-3 mt-4 text-lg font-medium">
+            <li>Why is this box like a <strong class="text-indigo-300">"safety net"</strong> for writers?</li>
+            <li>What happens to your score if you only write a 4-paragraph essay and <strong class="text-rose-400">ignore one of the 3 notes</strong>?</li>
+          </ul>
+        `,
+        answerHTML: `
+          <p>✅ <strong>Why it helps (The Safety Net):</strong> You don't have to brainstorm from scratch! Two-thirds (2/3) of your body paragraphs are already planned for you (3 notes = 3 body paragraphs).</p>
+          <p class="mt-3">✅ <strong>Penalty for skipping a note:</strong> You lose significant marks in the <strong class="text-rose-300 underline">Content</strong> criterion because the task is incomplete.</p>
+        `
+      },
+      {
+        seqId: 3,
+        isSecret: false,
+        rarity: "★★ RARE CARD • SPEED CHALLENGE",
+        badge: "Linker Arsenal",
+        icon: "⚡",
+        title: "CARD #3: THE 15-SECOND LINKER CHALLENGE",
+        timerSeconds: 15,
+        questionHTML: `
+          <p class="text-amber-300 font-extrabold uppercase tracking-wide text-lg">🔥 Team Speed Challenge! Beat the clock and shout out:</p>
+          <ol class="list-decimal list-inside space-y-3 mt-4 text-lg font-medium">
+            <li><strong class="text-indigo-300">THREE</strong> linking words/phrases to sequence your 3 body paragraphs.</li>
+            <li><strong class="text-indigo-300">TWO</strong> phrases to introduce your personal opinion.</li>
+            <li><strong class="text-indigo-300">ONE</strong> linker to show a contrasting idea.</li>
+          </ol>
+        `,
+        answerHTML: `
+          <p>✅ <strong>Sequencing (Body 1, 2, 3):</strong><br><span class="text-emerald-200"><em>Firstly / To begin with, Secondly / In addition / Furthermore, Finally / Last but not least...</em></span></p>
+          <p>✅ <strong>Personal Opinion:</strong><br><span class="text-emerald-200"><em>In my opinion, From my perspective, I firmly believe that...</em></span></p>
+          <p>✅ <strong>Contrast:</strong><br><span class="text-emerald-200"><em>However, On the other hand, Nevertheless, Whereas...</em></span></p>
+          <p class="pt-2 border-t border-emerald-700/60 text-amber-300 italic text-sm">
+            💡 <strong>Teacher's Note:</strong> Good news! You keep 100% of this weapon arsenal for IELTS!
+          </p>
+        `
+      },
+      {
+        seqId: 4,
+        isSecret: false,
+        rarity: "★★ EPIC CARD • BRAINSTORM SPRINT",
+        badge: "Brainstorm Sprint",
+        icon: "🧠",
+        title: "CARD #4: THE 3RD NOTE SPRINT",
+        timerSeconds: 20,
+        questionHTML: `
+          <p class="text-slate-300 text-sm uppercase font-bold tracking-wider">FCE Essay Topic:</p>
+          <blockquote class="bg-indigo-950/80 border-l-4 border-indigo-400 px-4 py-2.5 rounded-r-xl my-2 font-bold text-white text-lg">
+            "Should students be allowed to use smartphones in the classroom?"
+          </blockquote>
+          <div class="grid grid-cols-3 gap-2.5 text-sm my-3">
+            <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-700">📌 <strong>Note 1:</strong> Learning tool <em>(Body 1)</em></div>
+            <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-700">📌 <strong>Note 2:</strong> Distraction <em>(Body 2)</em></div>
+            <div class="bg-amber-950/40 p-2.5 rounded-lg border border-amber-500/60 text-amber-300">❓ <strong>Note 3:</strong> Your own idea <em>(Body 3)</em></div>
+          </div>
+          <p class="font-bold text-amber-300 text-lg mt-2">⏱️ Challenge: In 20 seconds, brainstorm TWO strong ideas for Note 3 (Paragraph 4)!</p>
+        `,
+        answerHTML: `
+          <p>✅ <strong>Suggested Ideas for Note #3 (Paragraph 4):</strong></p>
+          <ul class="list-disc list-inside ml-3 space-y-1 text-emerald-200">
+            <li>Health & eyesight problems (screen fatigue)</li>
+            <li>Cyberbullying & peer pressure</li>
+            <li>Cheating during exams</li>
+            <li>Reduced face-to-face social interaction</li>
+          </ul>
+          <p class="pt-2 border-t border-emerald-700/60 text-amber-300 italic text-sm">
+            💡 <strong>Teacher's Note:</strong> Notice how you just generated ideas without help? You'll need that superpower for the final box!
+          </p>
+        `
+      },
+      {
+        seqId: 5,
+        isSecret: true,
+        rarity: "★★★ ULTRA-RARE SSR • 1% DROP RATE",
+        badge: "SSR: THE BOSS",
+        icon: "👑",
+        title: "🌟 SECRET UNLOCKED: IELTS WRITING TASK 2 🌟",
+        timerSeconds: 90,
+        questionHTML: `
+          <div class="bg-gradient-to-br from-amber-950/80 via-slate-900 to-rose-950/80 border-2 border-amber-400 rounded-xl p-4 shadow-lg">
+            <div class="flex justify-between items-center text-[11px] font-extrabold uppercase tracking-widest text-amber-300 mb-1">
+              <span>🔥 IELTS ACADEMIC WRITING TASK 2 PROMPT</span>
+              <span class="bg-amber-400 text-slate-950 px-2 py-0.5 rounded">AT LEAST 250 WORDS</span>
+            </div>
+            <p class="text-base lg:text-lg font-extrabold text-white leading-snug">
+              "Some people believe that smartphones are a useful learning tool for students, while others argue that they cause too much distraction in the classroom."
+            </p>
+            <p class="text-sm lg:text-base font-bold text-amber-300 mt-1.5">
+              Discuss both these views and give your own opinion. <span class="text-xs font-normal text-slate-300">(Give reasons & examples from your own knowledge/experience.)</span>
+            </p>
+          </div>
+
+          <div class="mt-3 space-y-1.5">
+            <h4 class="font-extrabold text-amber-400 uppercase tracking-wider text-xs lg:text-sm">🕵️‍♂️ 3 Boss-Decoding Questions (Discuss in Teams):</h4>
+            <ol class="list-decimal list-inside space-y-1.5 text-sm lg:text-base">
+              <li><strong class="text-amber-200">Spot the Familiar:</strong> Where have you seen these exact two smartphone ideas before?</li>
+              <li><strong class="text-amber-200">The Disappearing Act:</strong> What happened to the FCE <strong>"Notes"</strong> box? Who plans the ideas now?</li>
+              <li><strong class="text-amber-200">5 Paragraphs ➔ 4 Paragraphs:</strong> Word count jumped from <strong>140–190</strong> to <strong>250+ words</strong>, yet IELTS uses <strong>4 paragraphs</strong> instead of 5. Why write <em>fewer</em> paragraphs when writing <em>more</em> words?</li>
+            </ol>
+          </div>
+        `,
+        answerHTML: `
+          <p>🎯 <strong>1. Same Topic:</strong> It is the exact same smartphone topic & 2 given notes from <strong>Box #4</strong>!</p>
+          <p>🎯 <strong>2. No More Safety Net:</strong> The FCE "Notes" box is gone. You must brainstorm <strong>100% of your arguments</strong> independently.</p>
+          <p>🎯 <strong>3. Depth Over Breadth (5 Paras ➔ 4 Paras):</strong></p>
+          <ul class="list-disc list-inside ml-2 space-y-1 text-emerald-200 text-xs lg:text-sm">
+            <li><strong>FCE (5 paras):</strong> 3 short body paragraphs (~35–45 words each) covering 3 separate notes.</li>
+            <li><strong>IELTS (4 paras):</strong> 2 deep, fully-developed body paragraphs (~90–100 words each) — Body 1 explores View A (<em>learning tool</em>) and Body 2 explores View B (<em>distraction</em>) with deep explanations & examples!</li>
+          </ul>
+        `
+      }
+    ];
+
+    // 2. GAME STATE
+    const boxVisualThemes = [
+      { gradient: "from-indigo-600 via-purple-600 to-pink-600", border: "border-indigo-400" },
+      { gradient: "from-teal-500 via-emerald-600 to-cyan-700", border: "border-emerald-400" },
+      { gradient: "from-orange-500 via-rose-600 to-purple-700", border: "border-orange-400" },
+      { gradient: "from-violet-600 via-fuchsia-600 to-indigo-800", border: "border-fuchsia-400" },
+      { gradient: "from-rose-600 via-red-600 to-amber-600", border: "border-rose-400" }
+    ];
+
+    let boxStates = [null, null, null, null, null];
+    let unboxedCount = 0;
+    let isAnimatingBox = false;
+    let isMuted = false;
+
+    // Timer State
+    let timerInterval = null;
+    let totalTimerSeconds = 15;
+    let remainingSeconds = 15;
+    let isTimerRunning = false;
+
+    // 3. WEB AUDIO API SYNTHESIZER
+    let audioCtx = null;
+    function getAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    function playTone(freq, type = 'sine', duration = 0.15, startTimeOffset = 0, volume = 0.18) {
+      if (isMuted) return;
+      try {
+        const ctx = getAudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + startTimeOffset);
+        gain.gain.setValueAtTime(volume, ctx.currentTime + startTimeOffset);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startTimeOffset + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + startTimeOffset);
+        osc.stop(ctx.currentTime + startTimeOffset + duration);
+      } catch (e) {}
+    }
+
+    function playShakeDrumroll() {
+      if (isMuted) return;
+      for (let i = 0; i < 6; i++) {
+        playTone(140 + i * 25, 'triangle', 0.08, i * 0.09, 0.2);
+      }
+    }
+
+    function playNormalRevealChime() {
+      if (isMuted) return;
+      [523.25, 659.25, 783.99, 1046.50].forEach((n, idx) => playTone(n, 'sine', 0.25, idx * 0.08, 0.22));
+    }
+
+    function playSecretBossFanfare() {
+      if (isMuted) return;
+      const fanfare = [
+        { f: 440, t: 0, d: 0.15 },
+        { f: 554.37, t: 0.12, d: 0.15 },
+        { f: 659.25, t: 0.24, d: 0.15 },
+        { f: 880, t: 0.36, d: 0.45 },
+        { f: 659.25, t: 0.55, d: 0.18 },
+        { f: 880, t: 0.72, d: 0.7 }
+      ];
+      fanfare.forEach(n => playTone(n.f, 'sawtooth', n.d, n.t, 0.2));
+    }
+
+    function playTickSound() {
+      playTone(800, 'sine', 0.04, 0, 0.1);
+    }
+
+    function playBuzzerSound() {
+      if (isMuted) return;
+      playTone(180, 'sawtooth', 0.4, 0, 0.25);
+      playTone(150, 'sawtooth', 0.5, 0.25, 0.25);
+    }
+
+    function toggleMute() {
+      isMuted = !isMuted;
+      document.getElementById('muteIcon').textContent = isMuted ? '🔇' : '🔊';
+      document.getElementById('muteLabel').textContent = isMuted ? 'Sound OFF' : 'Sound ON';
+    }
+
+    // 4. RENDER 5 MYSTERY BLIND BOXES (Widescreen Proportional Cards)
+    function renderBoxes() {
+      const grid = document.getElementById('boxesGrid');
+      grid.innerHTML = '';
+
+      for (let i = 0; i < 5; i++) {
+        const revealedCard = boxStates[i];
+        const theme = boxVisualThemes[i];
+        const boxEl = document.createElement('div');
+
+        if (!revealedCard) {
+          boxEl.id = `box-${i}`;
+          boxEl.onclick = () => handleBoxClick(i);
+          boxEl.className = `animate-float cursor-pointer group relative rounded-3xl p-5 bg-gradient-to-b ${theme.gradient} border-2 ${theme.border} shadow-2xl flex flex-col items-center justify-between h-[260px] xl:h-[290px] transition-all duration-300 hover:scale-105 hover:shadow-[0_0_35px_rgba(129,140,248,0.6)]`;
+          boxEl.style.animationDelay = `${i * 0.2}s`;
+          boxEl.innerHTML = `
+            <div class="w-full flex justify-between items-center">
+              <span class="text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-slate-950/50 text-white border border-white/20">
+                Mystery Box
+              </span>
+              <span class="text-xs font-bold text-white/80">?% Drop</span>
+            </div>
+            <div class="my-auto text-6xl xl:text-7xl transform group-hover:scale-110 group-hover:rotate-6 transition duration-300 drop-shadow-lg">
+              🎁
+            </div>
+            <div class="text-center w-full">
+              <div class="text-2xl font-extrabold font-display text-white tracking-wide drop-shadow">
+                BOX #${i + 1}
+              </div>
+              <div class="mt-1.5 text-xs font-bold uppercase tracking-widest text-white/95 bg-slate-950/40 py-1.5 rounded-xl group-hover:bg-white group-hover:text-slate-950 transition">
+                Click to Unbox
+              </div>
+            </div>
+          `;
+        } else {
+          const isBoss = revealedCard.isSecret;
+          boxEl.onclick = () => openCardModal(revealedCard, false);
+          boxEl.className = `cursor-pointer rounded-3xl p-5 flex flex-col items-center justify-between h-[260px] xl:h-[290px] transition transform hover:scale-105 ${
+            isBoss
+              ? 'bg-gradient-to-b from-amber-500/30 via-rose-900/40 to-slate-900 border-2 border-amber-400 shadow-[0_0_35px_rgba(245,158,11,0.5)]'
+              : 'bg-slate-900/90 border-2 border-indigo-500/50 shadow-lg'
+          }`;
+          boxEl.innerHTML = `
+            <div class="w-full flex justify-between items-center">
+              <span class="text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
+                isBoss ? 'bg-amber-400 text-slate-950' : 'bg-indigo-500/20 text-indigo-300'
+              }">
+                ${isBoss ? '★ SSR BOSS' : `Card #\${revealedCard.seqId}`}
+              </span>
+              <span class="text-xs font-bold text-emerald-400">✔ Opened</span>
+            </div>
+            <div class="my-auto text-5xl xl:text-6xl">
+              ${revealedCard.icon}
+            </div>
+            <div class="text-center w-full">
+              <div class="text-xs font-bold text-slate-400">BOX #${i + 1}</div>
+              <div class="text-base font-extrabold ${isBoss ? 'text-amber-300' : 'text-white'} mt-0.5 truncate">
+                ${revealedCard.badge}
+              </div>
+              <div class="mt-1.5 text-xs font-semibold text-indigo-300 underline">
+                Click to Review
+              </div>
+            </div>
+          `;
+        }
+
+        grid.appendChild(boxEl);
+      }
+
+      document.getElementById('progressText').textContent = `${unboxedCount} / 5`;
+
+      const blueprintHeaderBtn = document.getElementById('blueprintHeaderBtn');
+      const statusHint = document.getElementById('statusHint');
+      if (unboxedCount === 5) {
+        blueprintHeaderBtn.classList.remove('hidden');
+        statusHint.textContent = "🎉 All 5 boxes unboxed! Click 'FCE vs. IELTS Blueprint' at the top right for the summary.";
+      } else {
+        blueprintHeaderBtn.classList.add('hidden');
+        statusHint.textContent = `✨ ${5 - unboxedCount} box(es) remaining! Click any closed box to continue.`;
+      }
+    }
+
+    // 5. RIGGED UNBOXING HANDLER
+    function handleBoxClick(boxIndex) {
+      if (isAnimatingBox || boxStates[boxIndex] !== null) return;
+      isAnimatingBox = true;
+
+      const boxEl = document.getElementById(`box-${boxIndex}`);
+      boxEl.classList.remove('animate-float');
+      boxEl.classList.add('shaking');
+      playShakeDrumroll();
+
+      const nextCard = pedagogicalSequence[unboxedCount];
+
+      setTimeout(() => {
+        boxStates[boxIndex] = nextCard;
+        unboxedCount++;
+        isAnimatingBox = false;
+        renderBoxes();
+        openCardModal(nextCard, true);
+      }, 600);
+    }
+
+    // 6. SPLIT-VIEW MODAL DISPLAY
+    function openCardModal(card, isFreshUnbox) {
+      const modal = document.getElementById('cardModal');
+      const content = document.getElementById('cardModalContent');
+      const rarityBadge = document.getElementById('modalRarityBadge');
+      const cardBadge = document.getElementById('modalCardBadge');
+      const title = document.getElementById('modalTitle');
+      const question = document.getElementById('modalQuestion');
+      const answerContent = document.getElementById('answerKeyContent');
+      const secretShortcut = document.getElementById('secretBlueprintShortcut');
+
+      if (card.isSecret) {
+        content.className = "relative w-full max-w-[1480px] h-[86vh] rounded-3xl bg-slate-900 px-8 py-6 flex flex-col justify-between overflow-hidden ssr-glow";
+        rarityBadge.className = "px-3.5 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider bg-gradient-to-r from-amber-400 to-rose-500 text-slate-950 shadow";
+        title.className = "text-xl lg:text-2xl font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-rose-400";
+        secretShortcut.classList.remove('hidden');
+
+        if (isFreshUnbox) {
+          triggerScreenFlash();
+          launchConfetti();
+          playSecretBossFanfare();
+        }
+      } else {
+        content.className = "relative w-full max-w-[1480px] h-[86vh] rounded-3xl bg-slate-900 px-8 py-6 flex flex-col justify-between overflow-hidden rare-glow";
+        rarityBadge.className = "px-3.5 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider bg-indigo-500/30 text-indigo-200 border border-indigo-400/50";
+        title.className = "text-xl lg:text-2xl font-bold tracking-wide text-white";
+        secretShortcut.classList.add('hidden');
+
+        if (isFreshUnbox) {
+          playNormalRevealChime();
+        }
+      }
+
+      rarityBadge.textContent = card.rarity;
+      cardBadge.textContent = `${card.icon} ${card.badge}`;
+      title.textContent = card.title;
+      question.innerHTML = card.questionHTML;
+      answerContent.innerHTML = card.answerHTML;
+
+      // Reset Right Column to Locked State
+      toggleAnswerKey(false);
+
+      // Setup Timer
+      setupCardTimer(card.timerSeconds);
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeCardModal() {
+      stopCardTimer();
+      document.getElementById('cardModal').classList.add('hidden');
+    }
+
+    function toggleAnswerKey(show) {
+      const lockedView = document.getElementById('answerLockedView');
+      const unlockedView = document.getElementById('answerUnlockedView');
+      const vaultBox = document.getElementById('rightVaultBox');
+
+      if (show) {
+        lockedView.classList.add('hidden');
+        unlockedView.classList.remove('hidden');
+        vaultBox.className = "col-span-5 flex flex-col bg-emerald-950/40 border-2 border-emerald-500/70 rounded-2xl p-6 relative overflow-hidden shadow-inner";
+        playTone(660, 'sine', 0.12, 0, 0.15);
+      } else {
+        lockedView.classList.remove('hidden');
+        unlockedView.classList.add('hidden');
+        vaultBox.className = "col-span-5 flex flex-col bg-slate-950/50 border-2 border-dashed border-slate-700/80 rounded-2xl p-6 relative overflow-hidden";
+      }
+    }
+
+    // 7. INTERACTIVE COUNTDOWN TIMER
+    function setupCardTimer(seconds) {
+      stopCardTimer();
+      totalTimerSeconds = seconds;
+      remainingSeconds = seconds;
+      updateTimerUI();
+    }
+
+    function updateTimerUI() {
+      const mins = String(Math.floor(remainingSeconds / 60)).padStart(2, '0');
+      const secs = String(remainingSeconds % 60).padStart(2, '0');
+      const display = document.getElementById('timerDisplay');
+      const progress = document.getElementById('timerProgress');
+      const btn = document.getElementById('startTimerBtn');
+
+      display.textContent = `${mins}:${secs}`;
+      const pct = totalTimerSeconds > 0 ? (remainingSeconds / totalTimerSeconds) * 100 : 0;
+      progress.style.width = `${pct}%`;
+
+      if (remainingSeconds === 0) {
+        display.classList.add('text-rose-400', 'animate-pulse');
+        btn.textContent = "⏰ Time's Up!";
+      } else {
+        display.classList.remove('text-rose-400', 'animate-pulse');
+        btn.textContent = isTimerRunning ? "⏸ Pause" : "▶ Start Timer";
+      }
+    }
+
+    function toggleTimer() {
+      if (remainingSeconds === 0) {
+        resetCardTimer();
+      }
+      if (isTimerRunning) {
+        stopCardTimer();
+      } else {
+        isTimerRunning = true;
+        updateTimerUI();
+        timerInterval = setInterval(() => {
+          if (remainingSeconds > 0) {
+            remainingSeconds--;
+            if (remainingSeconds <= 5 && remainingSeconds > 0) {
+              playTickSound();
+            }
+            updateTimerUI();
+            if (remainingSeconds === 0) {
+              stopCardTimer();
+              playBuzzerSound();
+            }
+          }
+        }, 1000);
+      }
+    }
+
+    function stopCardTimer() {
+      isTimerRunning = false;
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      updateTimerUI();
+    }
+
+    function resetCardTimer() {
+      stopCardTimer();
+      remainingSeconds = totalTimerSeconds;
+      updateTimerUI();
+    }
+
+    // 8. BLUEPRINT SUMMARY MODAL
+    function openBlueprintModal() {
+      playNormalRevealChime();
+      document.getElementById('blueprintModal').classList.remove('hidden');
+    }
+
+    function closeBlueprintModal() {
+      document.getElementById('blueprintModal').classList.add('hidden');
+    }
+
+    // 9. SPECIAL EFFECTS: SCREEN FLASH & CONFETTI
+    function triggerScreenFlash() {
+      const flash = document.getElementById('screenFlash');
+      flash.classList.remove('flash-active');
+      void flash.offsetWidth;
+      flash.classList.add('flash-active');
+    }
+
+    function launchConfetti() {
+      const canvas = document.getElementById('confettiCanvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const pieces = [];
+      const colors = ['#fbbf24', '#f43f5e', '#a855f7', '#38bdf8', '#34d399', '#ffffff'];
+
+      for (let i = 0; i < 130; i++) {
+        pieces.push({
+          x: canvas.width / 2,
+          y: canvas.height / 2,
+          vx: (Math.random() - 0.5) * 22,
+          vy: (Math.random() - 0.8) * 20,
+          size: Math.random() * 9 + 5,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          rotation: Math.random() * 360,
+          vr: (Math.random() - 0.5) * 12
+        });
+      }
+
+      let frame = 0;
+      function animateConfetti() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        pieces.forEach(p => {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.38;
+          p.rotation += p.vr;
+
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate((p.rotation * Math.PI) / 180);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+          ctx.restore();
+        });
+        frame++;
+        if (frame < 140) {
+          requestAnimationFrame(animateConfetti);
+        } else {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+      animateConfetti();
+    }
+
+    // 10. RESET GAME
+    function resetGame() {
+      stopCardTimer();
+      closeCardModal();
+      closeBlueprintModal();
+      boxStates = [null, null, null, null, null];
+      unboxedCount = 0;
+      isAnimatingBox = false;
+      renderBoxes();
+    }
+
+    window.addEventListener('DOMContentLoaded', renderBoxes);
+  </script>
+</body>
+</html>
